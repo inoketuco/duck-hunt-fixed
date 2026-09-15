@@ -1,0 +1,1101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Duck Hunt - Finger Gun</title>
+  <style>
+    body { margin: 0; background: #111; color: #fff; font-family: sans-serif; }
+    #container { position: relative; width: 100vw; height: 100vh; overflow: hidden; }
+    video { position: absolute; left: 0; top: 0; width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+    canvas { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
+    #hud { position: absolute; left: 20px; top: 18px; z-index: 2; max-width: calc(100vw - 40px); }
+    h1 { margin: 0 0 6px; color: #ffe66d; font-size: clamp(1.35rem, 3vw, 2.4rem); line-height: .95; letter-spacing: .04em; text-shadow: 2px 2px 0 #d35400, 3px 3px 8px rgba(0,0,0,.7); }
+    .panel { display: flex; flex-direction: column; align-items: flex-start; gap: 7px; width: 170px; max-width: 100%; padding: 8px 10px; border: 2px solid rgba(255,255,255,.75); border-radius: 8px; background: rgba(10, 20, 25, .72); box-shadow: 0 5px 18px rgba(0,0,0,.35); backdrop-filter: blur(4px); }
+    #status { position: fixed; left: 50%; bottom: 22px; z-index: 3; width: max-content; max-width: calc(100vw - 32px); min-height: 1.1em; padding: 7px 13px; transform: translateX(-50%); overflow: hidden; border: 1px solid rgba(184,247,223,.7); border-radius: 999px; background: rgba(10, 20, 25, .78); box-shadow: 0 4px 14px rgba(0,0,0,.4); color: #b8f7df; font-size: .75rem; line-height: 1.1; white-space: normal; text-align: center; }
+    #score { color: #fff; font-weight: 700; }
+    .player-score { display: none; position: fixed; bottom: 20px; z-index: 3; min-width: 92px; padding: 8px 12px; border: 2px solid; border-radius: 8px; background: rgba(10, 20, 25, .78); box-shadow: 0 4px 14px rgba(0,0,0,.4); font-weight: 700; text-align: center; }
+    #playerOnePanel { left: 20px; border-color: #8ef6e4; color: #8ef6e4; }
+    #playerTwoPanel { right: 20px; border-color: #f94d75; color: #f94d75; }
+    #highScore { position: fixed; top: 20px; right: 20px; z-index: 3; padding: 10px 14px; border: 2px solid #ffe66d; border-radius: 9px; background: rgba(10, 20, 25, .78); box-shadow: 0 5px 18px rgba(0,0,0,.4); color: #ffe66d; font-weight: 700; }
+    label { color: #ffe66d; font-weight: 700; }
+    #difficulty { width: 132px; height: 22px; margin-left: -4px; accent-color: #f94d75; cursor: pointer; }
+    #difficulty::-webkit-slider-runnable-track { height: 8px; border-radius: 0; background: #35404a; }
+    #difficulty::-webkit-slider-thumb { width: 16px; height: 16px; margin-top: -4px; border: 2px solid #ffe66d; border-radius: 0; background: #f94d75; appearance: none; }
+    #difficulty::-moz-range-track { height: 8px; border-radius: 0; background: #35404a; }
+    #difficulty::-moz-range-thumb { width: 14px; height: 14px; border: 2px solid #ffe66d; border-radius: 0; background: #f94d75; }
+    .difficulty-scale { display: flex; justify-content: space-between; margin-top: -6px; color: #b8f7df; font-size: .7rem; }
+    #mode { width: 150px; accent-color: #8ef6e4; cursor: pointer; }
+    .mode-scale { display: flex; justify-content: space-between; margin-top: -6px; color: #b8f7df; font-size: .65rem; }
+    #roundTime { width: 132px; accent-color: #ffe66d; cursor: pointer; }
+    .round-time-scale { display: flex; justify-content: space-between; margin-top: -6px; color: #b8f7df; font-size: .65rem; }
+    #voiceDifficulty { padding: 6px 9px; border: 1px solid #8ef6e4; border-radius: 5px; background: #182b2f; color: #fff; font: inherit; cursor: pointer; }
+    #voiceDifficulty.listening { border-color: #ffe66d; color: #ffe66d; }
+    #playPause { padding: 6px 12px; border: 1px solid #ffe66d; border-radius: 5px; background: #182b2f; color: #fff; font: inherit; font-weight: 700; cursor: pointer; }
+    #playPause:hover, #playPause:focus-visible { background: #263d43; }
+    @media (max-width: 520px) { #status { bottom: 14px; } }
+    #winnerScreen { position: fixed; inset: 0; z-index: 5; display: none; place-items: center; background: rgba(5, 12, 18, .78); text-align: center; }
+    #winnerScreen.visible { display: grid; }
+    #winnerCard { padding: 24px 30px; border: 2px solid #ffe66d; border-radius: 12px; background: rgba(10, 20, 25, .94); box-shadow: 0 8px 30px rgba(0,0,0,.55); }
+    #winnerTitle { margin: 0 0 10px; color: #ffe66d; font-size: clamp(1.8rem, 5vw, 3rem); }
+    #winnerScores { margin: 0 0 16px; color: #fff; }
+    #playAgain { padding: 8px 14px; border: 1px solid #8ef6e4; border-radius: 5px; background: #182b2f; color: #fff; cursor: pointer; }
+    #startScreen { position: fixed; inset: 0; z-index: 4; display: grid; place-items: center; background: rgba(5, 12, 18, .55); text-align: center; }
+    #startCard { padding: 22px 28px; border: 2px solid #8ef6e4; border-radius: 12px; background: rgba(10, 20, 25, .94); box-shadow: 0 8px 30px rgba(0,0,0,.55); }
+    #startTitle { margin: 0 0 12px; color: #ffe66d; font-size: clamp(1.5rem, 4vw, 2.4rem); }
+    #startGame { padding: 10px 18px; border: 1px solid #ffe66d; border-radius: 5px; background: #182b2f; color: #fff; font: inherit; font-weight: 700; cursor: pointer; }
+    #startGame:hover, #playAgain:hover { background: #263d43; }
+  </style>
+</head>
+<body>
+<div id="container">
+  <video id="video" playsinline></video>
+  <canvas id="overlay"></canvas>
+  <div id="hud">
+    <h1>Shoot the Duck<br />to Win!</h1>
+    <div class="panel">
+      <div id="timer">Time: --</div>
+      <button id="playPause" type="button" aria-pressed="false">Play</button>
+      <div>
+        <label for="mode">Mode</label>
+        <input id="mode" type="range" min="0" max="4" step="1" value="1" aria-label="Game mode">
+        <div class="mode-scale"><span>Classic</span><span>Obstacle</span><span>Timed</span><span>Practice</span><span>Multi</span></div>
+      </div>
+      <div>
+        <label for="difficulty">Difficulty</label>
+        <input id="difficulty" type="range" min="0" max="2" step="1" value="1" aria-label="Difficulty">
+        <div class="difficulty-scale"><span>Easy</span><span>Medium</span><span>Hard</span></div>
+      </div>
+      <button id="voiceDifficulty" type="button">Use voice</button>
+      <div id="roundTimeSetting">
+        <label for="roundTime">Round time</label>
+        <input id="roundTime" type="range" min="30" max="120" step="30" value="60" aria-label="Round time in seconds">
+        <div class="round-time-scale"><span>30s</span><span>60s</span><span>90s</span><span>120s</span></div>
+      </div>
+    </div>
+  </div>
+  <div id="playerOnePanel" class="player-score">PLAYER 1<br><span id="playerOneScore">P1: 0</span></div>
+  <div id="playerTwoPanel" class="player-score">PLAYER 2<br><span id="playerTwoScore">P2: 0</span></div>
+  <div id="highScore">Best: 0</div>
+  <div id="winnerScreen" role="dialog" aria-live="polite">
+    <div id="winnerCard">
+      <h2 id="winnerTitle">Round Over</h2>
+      <p id="winnerScores"></p>
+      <button id="playAgain" type="button">Play again</button>
+    </div>
+  </div>
+  <div id="startScreen" role="dialog" aria-label="Start game">
+    <div id="startCard">
+      <h2 id="startTitle">Ready to hunt?</h2>
+      <button id="startGame" type="button">Start Game</button>
+    </div>
+  </div>
+  <div id="status">Pinch upper half to choose mode | Pinch lower half for difficulty | Aim, lower thumb to shoot</div>
+</div>
+
+<!-- MediaPipe Hands + Camera utils -->
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1675466862/camera_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils@0.6.1629159505/control_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils@0.3.1620248257/drawing_utils.js" crossorigin="anonymous"></script>
+<script src="./mediapipe-hands/hands.js" crossorigin="anonymous"></script>
+
+<!-- Your game logic -->
+<script type="module">
+  import { isFingerGun, getAimVector } from './fingerGunClassifier.js';
+
+  const video = document.getElementById('video');
+  const canvas = document.getElementById('overlay');
+  const ctx = canvas.getContext('2d');
+  const statusEl = document.getElementById('status');
+  const playerScoreEls = [
+    document.getElementById('playerOneScore'),
+    document.getElementById('playerTwoScore'),
+  ];
+  const highScoreEl = document.getElementById('highScore');
+  const difficultyEl = document.getElementById('difficulty');
+  const voiceDifficultyEl = document.getElementById('voiceDifficulty');
+  const modeEl = document.getElementById('mode');
+  const timerEl = document.getElementById('timer');
+  const playPauseEl = document.getElementById('playPause');
+  const roundTimeEl = document.getElementById('roundTime');
+  const winnerScreenEl = document.getElementById('winnerScreen');
+  const winnerTitleEl = document.getElementById('winnerTitle');
+  const winnerScoresEl = document.getElementById('winnerScores');
+  const playAgainEl = document.getElementById('playAgain');
+  const startScreenEl = document.getElementById('startScreen');
+  const startGameEl = document.getElementById('startGame');
+  const playerPanelEls = [
+    document.getElementById('playerOnePanel'),
+    document.getElementById('playerTwoPanel'),
+  ];
+  const difficultyValues = ['slow', 'medium', 'fast'];
+  const difficultyNames = ['Easy', 'Medium', 'Hard'];
+  const modeValues = ['classic', 'obstacle', 'timed', 'practice', 'multiplayer'];
+  const modeNames = ['Classic', 'Obstacle', 'Timed', 'Practice', 'Multiplayer'];
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  let voiceRecognition = null;
+  let pendingDifficulty = null;
+  let pendingDifficultySince = 0;
+  let pendingMode = null;
+  let pendingModeSince = 0;
+  const gestureHoldDuration = 500;
+
+  function showRuntimeError(message) {
+    statusEl.textContent = 'Runtime error: ' + message;
+  }
+
+  window.addEventListener('error', (event) => {
+    const message = event.error?.message || event.message;
+    if (message) showRuntimeError(message);
+  });
+  window.addEventListener('unhandledrejection', (event) => {
+    const message = event.reason?.message || event.reason;
+    if (message) showRuntimeError(message);
+  });
+
+  let scores = [0, 0];
+  let highScore = Number(localStorage.getItem('duck-hunt-high-score')) || 0;
+  let lastShotTime = 0;
+  let handsBusy = false;
+  let shotEffect = null;
+  let impactEffect = null;
+  let thumbWasDown = [false, false];
+  let lastGameFrameAt = performance.now();
+  let smoothedDisplayLm = [null, null];
+  let audioContext = null;
+  let ambientGain = null;
+  let timedRoundStartedAt = 0;
+  let countdownEndsAt = performance.now() + 3000;
+  let gameStarted = false;
+  let roundStarted = false;
+  let timedRoundOver = false;
+  let paused = false;
+  let pausedAt = 0;
+  highScoreEl.textContent = `Best: ${highScore}`;
+  timerEl.textContent = 'Idle';
+
+  function startAudio() {
+    if (!audioContext) {
+      audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      ambientGain = audioContext.createGain();
+      ambientGain.gain.value = 0.035;
+      ambientGain.connect(audioContext.destination);
+
+      const ambience = audioContext.createOscillator();
+      ambience.type = 'sine';
+      ambience.frequency.value = 95;
+      ambience.connect(ambientGain);
+      ambience.start();
+    }
+    if (audioContext.state === 'suspended') audioContext.resume();
+  }
+
+  function playSound(startFrequency, endFrequency, duration, type, volume) {
+    if (!audioContext) return;
+    const now = audioContext.currentTime;
+    const oscillator = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+    oscillator.type = type;
+    oscillator.frequency.setValueAtTime(startFrequency, now);
+    oscillator.frequency.exponentialRampToValueAtTime(Math.max(1, endFrequency), now + duration);
+    gain.gain.setValueAtTime(volume, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+    oscillator.connect(gain);
+    gain.connect(audioContext.destination);
+    oscillator.start(now);
+    oscillator.stop(now + duration);
+  }
+
+  function playShotSound() {
+    startAudio();
+    playSound(240, 70, 0.16, 'sawtooth', 0.18);
+  }
+
+  function playDuckDeathSound() {
+    startAudio();
+    playSound(520, 150, 0.38, 'triangle', 0.2);
+    window.setTimeout(() => playSound(300, 90, 0.28, 'square', 0.1), 80);
+  }
+
+  function playBombExplosionSound() {
+    startAudio();
+    const now = audioContext.currentTime;
+    const duration = 0.5;
+    const sampleCount = Math.floor(audioContext.sampleRate * duration);
+    const buffer = audioContext.createBuffer(1, sampleCount, audioContext.sampleRate);
+    const samples = buffer.getChannelData(0);
+    for (let index = 0; index < sampleCount; index++) {
+      const fade = 1 - index / sampleCount;
+      samples[index] = (Math.random() * 2 - 1) * fade * fade;
+    }
+
+    const noise = audioContext.createBufferSource();
+    const noiseGain = audioContext.createGain();
+    noise.buffer = buffer;
+    noiseGain.gain.setValueAtTime(0.42, now);
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+    noise.connect(noiseGain);
+    noiseGain.connect(audioContext.destination);
+    noise.start(now);
+
+    const rumble = audioContext.createOscillator();
+    const rumbleGain = audioContext.createGain();
+    rumble.type = 'sine';
+    rumble.frequency.setValueAtTime(110, now);
+    rumble.frequency.exponentialRampToValueAtTime(35, now + 0.45);
+    rumbleGain.gain.setValueAtTime(0.28, now);
+    rumbleGain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+    rumble.connect(rumbleGain);
+    rumbleGain.connect(audioContext.destination);
+    rumble.start(now);
+    rumble.stop(now + 0.45);
+  }
+
+  window.addEventListener('pointerdown', startAudio);
+  window.addEventListener('keydown', startAudio);
+
+  function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  function drawPlayerSplit() {
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255,255,255,.45)';
+    ctx.setLineDash([10, 8]);
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(canvas.width / 2, 0);
+    ctx.lineTo(canvas.width / 2, canvas.height);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+  }
+
+  // Simple duck target
+  const difficultySpeeds = { slow: 0.001, medium: 0.002, fast: 0.0045 };
+  const obstacleCounts = { slow: 3, medium: 6, fast: 9 };
+  const difficultyColors = { slow: '#70e000', medium: '#f59e0b', fast: '#ef476f' };
+  const duck = {
+    x: 0.5,
+    y: 0.6,
+    r: 0.06,
+    hitAt: 0,
+    targetX: 0.5,
+    targetY: 0.5,
+    nextTargetAt: 0,
+  };
+  const obstacles = [];
+
+  function resetDuckWander() {
+    duck.x = 0.15 + Math.random() * 0.7;
+    duck.y = 0.18 + Math.random() * 0.6;
+    duck.targetX = 0.1 + Math.random() * 0.8;
+    duck.targetY = 0.12 + Math.random() * 0.72;
+    duck.nextTargetAt = performance.now() + 400 + Math.random() * 1200;
+  }
+
+  function getDifficultyKey() {
+    return difficultyValues[difficultyEl.value] || 'medium';
+  }
+
+  function getModeKey() {
+    return modeValues[modeEl.value] || 'obstacle';
+  }
+
+  function isRoundTimed() {
+    return getModeKey() === 'timed' || getModeKey() === 'multiplayer';
+  }
+
+  function usesObstacles() {
+    return getModeKey() !== 'classic';
+  }
+
+  function updateModeInterface() {
+    const multiplayer = getModeKey() === 'multiplayer';
+    playerPanelEls[0].style.display = 'block';
+    playerPanelEls[1].style.display = multiplayer ? 'block' : 'none';
+    document.getElementById('roundTimeSetting').style.display = isRoundTimed() ? 'block' : 'none';
+  }
+
+  function resetRound() {
+    scores = [0, 0];
+    playerScoreEls[0].textContent = 'P1: 0';
+    playerScoreEls[1].textContent = 'P2: 0';
+    countdownEndsAt = performance.now() + 3000;
+    timedRoundStartedAt = 0;
+    roundStarted = false;
+    timedRoundOver = false;
+    paused = false;
+    pausedAt = 0;
+    winnerScreenEl.classList.remove('visible');
+    timerEl.textContent = gameStarted ? 'Starts: 3' : 'Idle';
+    playPauseEl.textContent = gameStarted ? 'Pause' : 'Play';
+    playPauseEl.setAttribute('aria-pressed', 'false');
+    updateModeInterface();
+    createObstacles();
+  }
+
+  function startGame() {
+    gameStarted = true;
+    startScreenEl.style.display = 'none';
+    resetRound();
+  }
+
+  function togglePlayPause() {
+    if (!gameStarted) {
+      startGame();
+      return;
+    }
+
+    if (!paused) {
+      paused = true;
+      pausedAt = performance.now();
+      playPauseEl.textContent = 'Resume';
+      playPauseEl.setAttribute('aria-pressed', 'true');
+      statusEl.textContent = 'Paused';
+      return;
+    }
+
+    const pausedDuration = performance.now() - pausedAt;
+    countdownEndsAt += pausedDuration;
+    if (timedRoundStartedAt) timedRoundStartedAt += pausedDuration;
+    paused = false;
+    pausedAt = 0;
+    playPauseEl.textContent = 'Pause';
+    playPauseEl.setAttribute('aria-pressed', 'false');
+    statusEl.textContent = 'Ready';
+  }
+
+  function updateRoundStart() {
+    if (!gameStarted) return false;
+    if (paused) return false;
+    if (roundStarted) return true;
+    const seconds = Math.ceil(Math.max(0, countdownEndsAt - performance.now()) / 1000);
+    if (seconds > 0) {
+      timerEl.textContent = `Starts: ${seconds}`;
+      return false;
+    }
+
+    roundStarted = true;
+    timedRoundStartedAt = performance.now();
+    timerEl.textContent = isRoundTimed() ? `Time: ${roundTimeEl.value}` : 'Ready!';
+    return true;
+  }
+
+  window.setInterval(updateRoundStart, 100);
+
+  function createObstacles() {
+    obstacles.length = 0;
+    if (!usesObstacles()) return;
+    const count = obstacleCounts[getDifficultyKey()] || 6;
+    for (let index = 0; index < count; index++) {
+      obstacles.push(createObstacle());
+    }
+  }
+
+  function isSafeObstaclePosition(candidate, ignoredObstacle = null) {
+    // Keep bombs below the top HUD band and away from the current duck and bombs.
+    if (candidate.y < 0.28) return false;
+    if (Math.hypot(candidate.x - duck.x, candidate.y - duck.y) < 0.16) return false;
+    return !obstacles.some((obstacle) => obstacle !== ignoredObstacle &&
+      Math.hypot(candidate.x - obstacle.x, candidate.y - obstacle.y) < 0.12);
+  }
+
+  function createObstacle(ignoredObstacle = null) {
+    for (let attempt = 0; attempt < 60; attempt++) {
+      const candidate = {
+        x: 0.1 + Math.random() * 0.8,
+        y: 0.28 + Math.random() * 0.5,
+        r: 0.028 + Math.random() * 0.012,
+        hitAt: 0,
+        respawnAt: 0,
+      };
+      if (isSafeObstaclePosition(candidate, ignoredObstacle)) return candidate;
+    }
+
+    return {
+      x: 0.5,
+      y: 0.75,
+      r: 0.03,
+      hitAt: 0,
+      respawnAt: 0,
+    };
+  }
+
+  function updateObstacles() {
+    const now = performance.now();
+    for (let index = 0; index < obstacles.length; index++) {
+      const obstacle = obstacles[index];
+      if (obstacle.respawnAt && now >= obstacle.respawnAt) {
+        obstacles[index] = createObstacle(obstacle);
+      }
+    }
+  }
+
+  createObstacles();
+
+  function getDuckSpeed() {
+    return difficultySpeeds[difficultyValues[difficultyEl.value]] || difficultySpeeds.medium;
+  }
+
+  function setDifficulty(value) {
+    const sliderValue = difficultyValues.indexOf(value);
+    if (sliderValue < 0 || Number(difficultyEl.value) === sliderValue) return;
+    difficultyEl.value = sliderValue;
+    createObstacles();
+    resetDuckWander();
+  }
+
+  function listenForDifficulty() {
+    if (!SpeechRecognition) {
+      voiceDifficultyEl.textContent = 'Voice unavailable';
+      return;
+    }
+
+    if (voiceRecognition) voiceRecognition.stop();
+    voiceRecognition = new SpeechRecognition();
+    voiceRecognition.lang = 'en-US';
+    voiceRecognition.interimResults = false;
+    voiceRecognition.maxAlternatives = 1;
+    let selectedDifficulty = null;
+    voiceDifficultyEl.classList.add('listening');
+    voiceDifficultyEl.textContent = 'Say Easy, Medium, or Hard';
+
+    voiceRecognition.onstart = () => {
+      voiceDifficultyEl.textContent = 'Listening...';
+    };
+
+    voiceRecognition.onresult = (event) => {
+      const spoken = event.results[0][0].transcript.toLowerCase();
+      const match = spoken.match(/easy|medium|hard/);
+      if (!match) return;
+      selectedDifficulty = match[0];
+      const value = selectedDifficulty === 'easy'
+        ? 'slow'
+        : selectedDifficulty === 'hard' ? 'fast' : 'medium';
+      setDifficulty(value);
+      resetRound();
+    };
+    voiceRecognition.onnomatch = () => {
+      voiceDifficultyEl.textContent = 'Say Easy, Medium, or Hard';
+    };
+    voiceRecognition.onend = () => {
+      voiceDifficultyEl.classList.remove('listening');
+      voiceDifficultyEl.textContent = selectedDifficulty
+        ? `${selectedDifficulty[0].toUpperCase()}${selectedDifficulty.slice(1)} selected`
+        : 'Try voice again';
+    };
+    voiceRecognition.onerror = () => {
+      voiceDifficultyEl.classList.remove('listening');
+      voiceDifficultyEl.textContent = 'Try voice again';
+    };
+    try {
+      voiceRecognition.start();
+    } catch (error) {
+      voiceDifficultyEl.classList.remove('listening');
+      voiceDifficultyEl.textContent = 'Try voice again';
+    }
+  }
+
+  voiceDifficultyEl.addEventListener('click', listenForDifficulty);
+
+  function setMode(value) {
+    const sliderValue = modeValues.indexOf(value);
+    if (sliderValue < 0 || Number(modeEl.value) === sliderValue) return;
+    modeEl.value = sliderValue;
+    resetRound();
+  }
+
+  difficultyEl.addEventListener('change', () => {
+    createObstacles();
+    resetDuckWander();
+  });
+
+  modeEl.addEventListener('change', () => {
+    resetRound();
+  });
+
+  roundTimeEl.addEventListener('change', () => {
+    if (isRoundTimed()) resetRound();
+  });
+
+  playAgainEl.addEventListener('click', resetRound);
+  startGameEl.addEventListener('click', startGame);
+  playPauseEl.addEventListener('click', togglePlayPause);
+  window.addEventListener('keydown', (event) => {
+    if (event.code !== 'Space' && event.key.toLowerCase() !== 'p') return;
+    if (event.target instanceof HTMLInputElement) return;
+    event.preventDefault();
+    togglePlayPause();
+  });
+
+  function finishRound() {
+    if (timedRoundOver) return;
+    timedRoundOver = true;
+    const [playerOneScore, playerTwoScore] = scores;
+    if (getModeKey() !== 'multiplayer') {
+      winnerTitleEl.textContent = 'Round Over';
+      winnerScoresEl.textContent = `Final score: ${playerOneScore}`;
+      winnerScreenEl.classList.add('visible');
+      return;
+    }
+    winnerTitleEl.textContent = playerOneScore === playerTwoScore
+      ? 'Draw!'
+      : playerOneScore > playerTwoScore ? 'Player 1 Wins!' : 'Player 2 Wins!';
+    winnerScoresEl.textContent = `Player 1: ${playerOneScore}  |  Player 2: ${playerTwoScore}`;
+    winnerScreenEl.classList.add('visible');
+  }
+
+  function selectDifficultyWithHand(displayLm) {
+    if (gameStarted && !timedRoundOver) {
+      pendingDifficulty = null;
+      return;
+    }
+
+    const pinchDistance = Math.hypot(displayLm[4].x - displayLm[8].x, displayLm[4].y - displayLm[8].y);
+    const palmSize = Math.max(Math.hypot(displayLm[0].x - displayLm[9].x, displayLm[0].y - displayLm[9].y), 0.001);
+    const pinching = pinchDistance < palmSize * 0.55;
+    if (!pinching || displayLm[9].y < 0.5) {
+      pendingDifficulty = null;
+      return;
+    }
+
+    const handX = (displayLm[4].x + displayLm[8].x) / 2;
+    const sliderValue = Math.max(0, Math.min(2, Math.round(handX * 2)));
+    const value = difficultyValues[sliderValue];
+    const now = performance.now();
+
+    if (pendingDifficulty !== sliderValue) {
+      pendingDifficulty = sliderValue;
+      pendingDifficultySince = now;
+    }
+
+    const elapsed = now - pendingDifficultySince;
+    if (elapsed >= gestureHoldDuration) {
+      setDifficulty(value);
+      pendingDifficulty = null;
+      statusEl.textContent = `${difficultyNames[sliderValue]} selected`;
+    } else {
+      statusEl.textContent = `Hold for ${difficultyNames[sliderValue]}`;
+    }
+  }
+
+  function selectModeWithHand(displayLm) {
+    if (gameStarted && !timedRoundOver) {
+      pendingMode = null;
+      return;
+    }
+
+    const pinchDistance = Math.hypot(displayLm[4].x - displayLm[8].x, displayLm[4].y - displayLm[8].y);
+    const palmSize = Math.max(Math.hypot(displayLm[0].x - displayLm[9].x, displayLm[0].y - displayLm[9].y), 0.001);
+    if (pinchDistance >= palmSize * 0.55 || displayLm[9].y >= 0.5) {
+      pendingMode = null;
+      return;
+    }
+
+    const sliderValue = Math.max(0, Math.min(4, Math.round(((displayLm[4].x + displayLm[8].x) / 2) * 4)));
+    const value = modeValues[sliderValue];
+    const now = performance.now();
+    if (pendingMode !== sliderValue) {
+      pendingMode = sliderValue;
+      pendingModeSince = now;
+    }
+    if (now - pendingModeSince >= gestureHoldDuration) {
+      setMode(value);
+      pendingMode = null;
+      statusEl.textContent = `${modeNames[sliderValue]} selected`;
+    } else {
+      statusEl.textContent = `Hold for ${modeNames[sliderValue]}`;
+    }
+  }
+
+  function isThumbDown(landmarks) {
+    const palmSize = Math.max(Math.hypot(landmarks[0].x - landmarks[9].x, landmarks[0].y - landmarks[9].y), 0.001);
+    return landmarks[4].y > landmarks[3].y + palmSize * 0.12;
+  }
+
+  function smoothLandmarks(displayLm, playerIndex) {
+    if (!smoothedDisplayLm[playerIndex]) {
+      smoothedDisplayLm[playerIndex] = displayLm.map((point) => ({ ...point }));
+      return smoothedDisplayLm[playerIndex];
+    }
+
+    const smoothing = 0.35;
+    smoothedDisplayLm[playerIndex] = displayLm.map((point, index) => ({
+      x: smoothedDisplayLm[playerIndex][index].x + (point.x - smoothedDisplayLm[playerIndex][index].x) * smoothing,
+      y: smoothedDisplayLm[playerIndex][index].y + (point.y - smoothedDisplayLm[playerIndex][index].y) * smoothing,
+      z: smoothedDisplayLm[playerIndex][index].z + (point.z - smoothedDisplayLm[playerIndex][index].z) * smoothing,
+    }));
+    return smoothedDisplayLm[playerIndex];
+  }
+
+  function updateDuck(dt) {
+    if (!updateRoundStart()) return;
+    if (paused) return;
+    updateObstacles();
+    if (isRoundTimed()) {
+      const secondsLeft = Math.max(0, Number(roundTimeEl.value) - Math.floor((performance.now() - timedRoundStartedAt) / 1000));
+      timerEl.textContent = `Time: ${secondsLeft}`;
+      if (secondsLeft === 0) finishRound();
+    } else {
+      timerEl.textContent = 'Time: --';
+    }
+    if (timedRoundOver) return;
+    if (duck.hitAt) {
+      if (performance.now() - duck.hitAt < 700) return;
+      resetDuckWander();
+      duck.hitAt = 0;
+    }
+
+    const now = performance.now();
+    const dx = duck.targetX - duck.x;
+    const dy = duck.targetY - duck.y;
+    const distance = Math.hypot(dx, dy);
+
+    if (distance < 0.02 || now >= duck.nextTargetAt && distance < 0.08) {
+      duck.targetX = 0.1 + Math.random() * 0.8;
+      duck.targetY = 0.12 + Math.random() * 0.72;
+      duck.nextTargetAt = now + 350 + Math.random() * 1300;
+    }
+
+    const directionX = duck.targetX - duck.x;
+    const directionY = duck.targetY - duck.y;
+    const travelDistance = Math.hypot(directionX, directionY) || 1;
+    const speed = getDuckSpeed() * dt * 0.9;
+    const stepX = (directionX / travelDistance) * Math.min(speed, travelDistance);
+    const stepY = (directionY / travelDistance) * Math.min(speed, travelDistance);
+
+    duck.x += stepX;
+    duck.y += stepY;
+
+    if (duck.x < 0.05 || duck.x > 0.95) {
+      duck.x = Math.min(0.95, Math.max(0.05, duck.x));
+      duck.targetX = 0.1 + Math.random() * 0.8;
+    }
+    if (duck.y < 0.12 || duck.y > 0.88) {
+      duck.y = Math.min(0.88, Math.max(0.12, duck.y));
+      duck.targetY = 0.12 + Math.random() * 0.72;
+    }
+  }
+
+  function drawDuck() {
+    const hitProgress = duck.hitAt
+      ? Math.min((performance.now() - duck.hitAt) / 700, 1)
+      : 0;
+    const cx = duck.x * canvas.width;
+    const cy = duck.y * canvas.height;
+    const r = duck.r * Math.min(canvas.width, canvas.height) * (1 + hitProgress * 0.35);
+    const color = difficultyColors[difficultyValues[difficultyEl.value]] || difficultyColors.medium;
+
+    const flap = Math.sin(performance.now() / 130) * r * 0.18;
+
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(hitProgress * Math.PI * 2.5);
+    ctx.globalAlpha = 1 - hitProgress;
+
+    // Stylized duck with a body, head, beak, tail, and animated wings.
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.ellipse(0, r * 0.16, r * 1.05, r * 0.7, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#ffd166';
+    ctx.beginPath();
+    ctx.arc(r * 0.68, -r * 0.42, r * 0.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#f97316';
+    ctx.beginPath();
+    ctx.moveTo(r * 1.08, -r * 0.38);
+    ctx.lineTo(r * 1.55, -r * 0.2);
+    ctx.lineTo(r * 1.08, -r * 0.05);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = '#000';
+    ctx.beginPath();
+    ctx.arc(r * 0.82, -r * 0.55, r * 0.1, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = hitProgress > 0.25 ? '#ff3b30' : '#d97706';
+    ctx.save();
+    ctx.translate(-r * 0.45, r * 0.05 + flap);
+    ctx.rotate(-0.35 + flap / r);
+    ctx.beginPath();
+    ctx.ellipse(0, 0, r * 0.62, r * 0.27, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    ctx.save();
+    ctx.translate(r * 0.35, r * 0.05 - flap);
+    ctx.rotate(0.35 - flap / r);
+    ctx.beginPath();
+    ctx.ellipse(0, 0, r * 0.62, r * 0.27, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    ctx.fillStyle = '#f97316';
+    ctx.beginPath();
+    ctx.moveTo(-r * 1.02, r * 0.05);
+    ctx.lineTo(-r * 1.42, -r * 0.2);
+    ctx.lineTo(-r * 1.3, r * 0.3);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawObstacles() {
+    const now = performance.now();
+    for (const obstacle of obstacles) {
+      if (obstacle.hitAt && now - obstacle.hitAt >= 300) continue;
+      const hitProgress = obstacle.hitAt
+        ? Math.min((now - obstacle.hitAt) / 300, 1)
+        : 0;
+      const cx = obstacle.x * canvas.width;
+      const bob = Math.sin(now / 420 + obstacle.x * 12) * 3;
+      const cy = obstacle.y * canvas.height + bob;
+      const radius = obstacle.r * Math.min(canvas.width, canvas.height) * (1 + hitProgress * 0.3);
+      const pulse = 1 + Math.sin(now / 180 + obstacle.y * 10) * 0.08;
+
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.scale(pulse, pulse);
+      ctx.globalAlpha = 1 - hitProgress;
+      ctx.shadowColor = hitProgress ? '#ff3b30' : '#ff8c42';
+      ctx.shadowBlur = 10;
+      ctx.fillStyle = hitProgress ? '#ff3b30' : '#202633';
+      ctx.strokeStyle = '#aeb8c8';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.arc(0, 0, radius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = '#687386';
+      ctx.beginPath();
+      ctx.arc(-radius * .28, -radius * .3, radius * .16, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = '#d97706';
+      ctx.lineWidth = Math.max(2, radius * .1);
+      ctx.beginPath();
+      ctx.moveTo(radius * .2, -radius * .8);
+      ctx.quadraticCurveTo(radius * .55, -radius * 1.25, radius * .8, -radius * 1.05);
+      ctx.stroke();
+
+      const sparkSize = radius * (0.12 + (Math.sin(now / 90) + 1) * 0.05);
+      ctx.fillStyle = '#ffe66d';
+      ctx.beginPath();
+      ctx.arc(radius * .82, -radius * 1.05, sparkSize, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  function drawShotEffects() {
+    const now = performance.now();
+
+    if (shotEffect) {
+      const age = now - shotEffect.startedAt;
+      if (age < 180) {
+        const progress = age / 180;
+        const endX = shotEffect.startX + (shotEffect.endX - shotEffect.startX) * progress;
+        const endY = shotEffect.startY + (shotEffect.endY - shotEffect.startY) * progress;
+        ctx.save();
+        ctx.strokeStyle = '#ffe66d';
+        ctx.shadowColor = '#fff';
+        ctx.shadowBlur = 12;
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(shotEffect.startX, shotEffect.startY);
+        ctx.lineTo(endX, endY);
+        ctx.stroke();
+        ctx.restore();
+      } else {
+        shotEffect = null;
+      }
+    }
+
+    if (!impactEffect) return;
+    const age = now - impactEffect.startedAt;
+    if (age >= 420) {
+      impactEffect = null;
+      return;
+    }
+
+    const progress = age / 420;
+    const radius = 12 + progress * 48;
+    ctx.save();
+    ctx.translate(impactEffect.x, impactEffect.y);
+    ctx.globalAlpha = 1 - progress;
+    ctx.strokeStyle = impactEffect.color || '#ffe66d';
+    ctx.fillStyle = impactEffect.color || '#ff3b30';
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.arc(0, 0, radius, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(0, 0, Math.max(3, 14 * (1 - progress)), 0, Math.PI * 2);
+    ctx.fill();
+    for (let ray = 0; ray < 8; ray++) {
+      const angle = (Math.PI * 2 * ray) / 8;
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(angle) * radius * .65, Math.sin(angle) * radius * .65);
+      ctx.lineTo(Math.cos(angle) * radius, Math.sin(angle) * radius);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function drawGunOverlay(wrist, indexTip, playerIndex, handedness) {
+    const wx = wrist.x * canvas.width;
+    const wy = wrist.y * canvas.height;
+    const ix = indexTip.x * canvas.width;
+    const iy = indexTip.y * canvas.height;
+    const length = Math.max(Math.hypot(ix - wx, iy - wy), 70);
+    const angle = Math.atan2(iy - wy, ix - wx);
+    const scale = Math.max(length / 180, 0.7);
+
+    ctx.save();
+    ctx.translate(wx, wy);
+    ctx.rotate(angle);
+    // Keep the handle upright for either physical hand. Only unknown-hand
+    // multiplayer input uses the player-side fallback orientation.
+    const verticalScale = handedness === 'Unknown' && playerIndex === 1
+      ? -scale
+      : scale;
+    ctx.scale(scale, verticalScale);
+
+    // Bright arcade-style silhouette aligned with the player's hand.
+    ctx.shadowColor = 'rgba(0, 0, 0, .65)';
+    ctx.shadowBlur = 8;
+    ctx.fillStyle = '#1b263b';
+    ctx.strokeStyle = '#8ef6e4';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.roundRect(18, -18, 108, 36, 9);
+    ctx.roundRect(112, -11, 58, 22, 5);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = '#ef476f';
+    ctx.beginPath();
+    ctx.moveTo(42, 14);
+    ctx.lineTo(76, 14);
+    ctx.lineTo(65, 64);
+    ctx.lineTo(38, 54);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#ffe66d';
+    ctx.fillRect(128, -5, 32, 10);
+    ctx.fillStyle = '#8ef6e4';
+    ctx.beginPath();
+    ctx.arc(48, 0, 8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    return {
+      x: wx + Math.cos(angle) * 170 * scale,
+      y: wy + Math.sin(angle) * 170 * scale,
+    };
+  }
+
+  function tryShoot(aimDirection, muzzle, playerIndex) {
+    const now = performance.now();
+    if (!roundStarted) return;
+    if (paused) return;
+    if (duck.hitAt) return;
+    if (timedRoundOver) return;
+    if (now - lastShotTime < 400) return;
+    playShotSound();
+
+    // aimDirection is a direction, not a point on the canvas.
+    const aimX = aimDirection.x * canvas.width;
+    const aimY = aimDirection.y * canvas.height;
+
+    const originX = muzzle.x;
+    const originY = muzzle.y;
+    const dx = aimX, dy = aimY;
+    const len = Math.sqrt(dx*dx + dy*dy) || 1;
+    const ux = dx / len, uy = dy / len;
+    const maxDistance = Math.max(canvas.width, canvas.height) * 1.4;
+
+    shotEffect = {
+      startX: originX,
+      startY: originY,
+      endX: originX + ux * maxDistance,
+      endY: originY + uy * maxDistance,
+      startedAt: now,
+    };
+
+    function rayDistance(targetX, targetY) {
+      const targetDx = targetX - originX;
+      const targetDy = targetY - originY;
+      const distanceAlongRay = targetDx * ux + targetDy * uy;
+      if (distanceAlongRay <= 0) return null;
+      const closestX = originX + ux * distanceAlongRay;
+      const closestY = originY + uy * distanceAlongRay;
+      return {
+        distanceAlongRay,
+        distanceFromRay: Math.hypot(closestX - targetX, closestY - targetY),
+      };
+    }
+
+    const duckHit = duck.hitAt ? null : rayDistance(duck.x * canvas.width, duck.y * canvas.height);
+    let target = duckHit && duckHit.distanceFromRay < duck.r * Math.min(canvas.width, canvas.height) * 1.4
+      ? { type: 'duck', distanceAlongRay: duckHit.distanceAlongRay }
+      : null;
+
+    for (const obstacle of obstacles) {
+      if (obstacle.hitAt) continue;
+      const bob = Math.sin(now / 420 + obstacle.x * 12) * 3;
+      const hit = rayDistance(obstacle.x * canvas.width, obstacle.y * canvas.height + bob);
+      const hitRadius = obstacle.r * Math.min(canvas.width, canvas.height) * 1.35;
+      if (hit && hit.distanceFromRay < hitRadius && (!target || hit.distanceAlongRay < target.distanceAlongRay)) {
+        target = { type: 'obstacle', obstacle, distanceAlongRay: hit.distanceAlongRay };
+      }
+    }
+
+    if (target?.type === 'duck') {
+      scores[playerIndex] += 10;
+      playerScoreEls[playerIndex].textContent = `P${playerIndex + 1}: ${scores[playerIndex]}`;
+      playDuckDeathSound();
+      if (scores[playerIndex] > highScore) {
+        highScore = scores[playerIndex];
+        highScoreEl.textContent = `Best: ${highScore}`;
+        localStorage.setItem('duck-hunt-high-score', String(highScore));
+      }
+      duck.hitAt = performance.now();
+      impactEffect = {
+        x: duck.x * canvas.width,
+        y: duck.y * canvas.height,
+        startedAt: now,
+        color: '#ff3b30',
+      };
+    } else if (target?.type === 'obstacle' && getModeKey() !== 'practice') {
+      scores[playerIndex] = Math.max(0, scores[playerIndex] - 5);
+      playerScoreEls[playerIndex].textContent = `P${playerIndex + 1}: ${scores[playerIndex]}`;
+      playBombExplosionSound();
+      target.obstacle.hitAt = now;
+      target.obstacle.respawnAt = now + 350;
+      impactEffect = {
+        x: target.obstacle.x * canvas.width,
+        y: target.obstacle.y * canvas.height,
+        startedAt: now,
+        color: '#f97316',
+      };
+    }
+    lastShotTime = now;
+  }
+
+  const hands = new Hands({
+    locateFile: (file) => `./mediapipe-hands/${file}`,
+  });
+  hands.setOptions({
+    maxNumHands: 2,
+    modelComplexity: 0,
+    useCpuInference: true,
+    minDetectionConfidence: 0.6,
+    minTrackingConfidence: 0.6,
+  });
+
+  hands.onResults((results) => {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Draw mirrored video
+    ctx.save();
+    ctx.scale(-1, 1);
+    ctx.drawImage(video, -canvas.width, 0, canvas.width, canvas.height);
+    ctx.restore();
+    if (getModeKey() === 'multiplayer') drawPlayerSplit();
+
+    const now = performance.now();
+    const frameDelta = Math.min(now - lastGameFrameAt, 50);
+    lastGameFrameAt = now;
+    updateDuck(frameDelta);
+    drawObstacles();
+    drawDuck();
+    drawShotEffects();
+
+    if (!results.multiHandLandmarks || results.multiHandLandmarks.length === 0) {
+      thumbWasDown = [false, false];
+      pendingDifficulty = null;
+      pendingMode = null;
+      smoothedDisplayLm = [null, null];
+      return;
+    }
+
+    const playerGunFound = [false, false];
+
+    for (let i = 0; i < results.multiHandLandmarks.length; i++) {
+      const lm = results.multiHandLandmarks[i];
+      const handedness = results.handedness?.[i]?.label || 'Unknown';
+      // The video is mirrored for a natural selfie view, so mirror every
+      // visual hand coordinate and the shooting direction to match it.
+      const displayLm = lm.map((point) => ({ ...point, x: 1 - point.x }));
+      const playerIndex = getModeKey() === 'multiplayer'
+        ? (displayLm[9].x < 0.5 ? 0 : 1)
+        : 0;
+      const smoothDisplayLm = smoothLandmarks(displayLm, playerIndex);
+
+      if (isFingerGun(lm, handedness)) {
+        playerGunFound[playerIndex] = true;
+        const rawAim = getAimVector(lm);
+        const aim = { x: -rawAim.x, y: rawAim.y };
+
+        const wrist = smoothDisplayLm[0];
+        const indexTip = smoothDisplayLm[8];
+        const wx = wrist.x * canvas.width;
+        const wy = wrist.y * canvas.height;
+        const ix = indexTip.x * canvas.width;
+        const iy = indexTip.y * canvas.height;
+
+        const muzzle = drawGunOverlay(wrist, indexTip, playerIndex, handedness);
+
+        const thumbDown = isThumbDown(lm);
+        if (thumbDown && !thumbWasDown[playerIndex]) tryShoot(aim, muzzle, playerIndex);
+        thumbWasDown[playerIndex] = thumbDown;
+      } else {
+        drawConnectors(ctx, smoothDisplayLm, HAND_CONNECTIONS, {color: '#00ffcc', lineWidth: 2});
+        drawLandmarks(ctx, smoothDisplayLm, {color: '#ff3366', lineWidth: 1, radius: 3});
+        selectModeWithHand(smoothDisplayLm);
+        selectDifficultyWithHand(smoothDisplayLm);
+      }
+    }
+
+    for (let playerIndex = 0; playerIndex < 2; playerIndex++) {
+      if (!playerGunFound[playerIndex]) thumbWasDown[playerIndex] = false;
+    }
+  });
+
+  const camera = new Camera(video, {
+    onFrame: async () => {
+      if (video.readyState < 2 || video.videoWidth === 0) return; // not enough data yet
+      if (handsBusy) return; // previous send() still in flight — never overlap calls
+      handsBusy = true;
+      try {
+        await hands.send({image: video});
+      } catch (err) {
+        statusEl.textContent = 'Hand tracking error: ' + (err.message || err);
+      } finally {
+        handsBusy = false;
+      }
+    },
+    width: 640,
+    height: 480,
+  });
+
+  camera.start().then(() => {
+  }).catch((err) => {
+    statusEl.textContent = 'Camera error: ' + (err.message || err);
+  });
+</script>
+</body>
+</html>
